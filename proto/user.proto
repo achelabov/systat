@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package proto;
+
+import "google/protobuf/wrappers.proto";
+
+option go_package = "./";
+
+service UserService {
+	rpc CheckUserExistence (User) returns (google.protobuf.BoolValue);
+}
+
+message User {
+	string login = 1;
+	string password = 2;
+}
