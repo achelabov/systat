@@ -1,3 +1,0 @@
-[submodule "external/sysinfo"]
-	path = external/sysinfo
-	url = https://github.com/zcalusic/sysinfo
