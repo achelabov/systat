@@ -10,27 +10,25 @@ import (
 )
 
 type BatteryWidget struct {
-	batt           map[int]*Battery
+	batts          map[int]*Battery
 	mutex          *sync.Mutex
 	updateInterval time.Duration
 }
 
 func NewBatteryWidget() *BatteryWidget {
 	widget := &BatteryWidget{
-		batt:           make(map[int]*Battery),
+		batts:          make(map[int]*Battery),
 		mutex:          new(sync.Mutex),
 		updateInterval: time.Second,
 	}
 
 	for i := range getBatteries() {
-		widget.batt[i] = new(Battery)
+		widget.batts[i] = new(Battery)
 	}
 
 	go func() {
 		for range time.NewTicker(widget.updateInterval).C {
-			widget.mutex.Lock()
 			widget.update()
-			widget.mutex.Unlock()
 		}
 	}()
 
@@ -41,7 +39,7 @@ func (b *BatteryWidget) GetBatteries() []*Battery {
 	batteries := make([]*Battery, 0)
 
 	b.mutex.Lock()
-	for _, value := range b.batt {
+	for _, value := range b.batts {
 		batteries = append(batteries, value)
 	}
 	b.mutex.Unlock()
@@ -52,9 +50,12 @@ func (b *BatteryWidget) GetBatteries() []*Battery {
 func (b *BatteryWidget) update() {
 	batteries := getBatteries()
 
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+
 	for i, battery := range batteries {
-		b.batt[i].PercentFull = math.Abs(battery.Current/battery.Full) * 100.0
-		b.batt[i].State = battery.State.String()
+		b.batts[i].PercentFull = math.Abs(battery.Current/battery.Full) * 100.0
+		b.batts[i].State = battery.State.String()
 	}
 }
 
