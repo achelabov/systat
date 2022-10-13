@@ -5,12 +5,13 @@ import (
 	"sync"
 	"time"
 
+	models "github.com/achelabov/systat/server/models"
 	cpuInf "github.com/shirou/gopsutil/cpu"
 )
 
 type CpuWidget struct {
 	averageLoad    float64
-	cpus           map[int]*Cpu
+	cpus           map[int]*models.Cpu
 	mutex          *sync.Mutex
 	updateInterval time.Duration
 }
@@ -22,13 +23,13 @@ func NewCpuWidget() *CpuWidget {
 	}
 
 	widget := &CpuWidget{
-		cpus:           make(map[int]*Cpu),
+		cpus:           make(map[int]*models.Cpu),
 		mutex:          new(sync.Mutex),
 		updateInterval: time.Second,
 	}
 
 	for i := 0; i < cpuCount; i++ {
-		widget.cpus[i] = new(Cpu)
+		widget.cpus[i] = new(models.Cpu)
 	}
 
 	go func() {
@@ -40,8 +41,8 @@ func NewCpuWidget() *CpuWidget {
 	return widget
 }
 
-func (c *CpuWidget) GetCpus() []*Cpu {
-	cpus := make([]*Cpu, 0)
+func (c *CpuWidget) GetCpus() []*models.Cpu {
+	cpus := make([]*models.Cpu, 0)
 
 	c.mutex.Lock()
 	for _, value := range c.cpus {

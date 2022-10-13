@@ -6,24 +6,25 @@ import (
 	"sync"
 	"time"
 
+	models "github.com/achelabov/systat/server/models"
 	"github.com/distatus/battery"
 )
 
 type BatteryWidget struct {
-	batts          map[int]*Battery
+	batts          map[int]*models.Battery
 	mutex          *sync.Mutex
 	updateInterval time.Duration
 }
 
 func NewBatteryWidget() *BatteryWidget {
 	widget := &BatteryWidget{
-		batts:          make(map[int]*Battery),
+		batts:          make(map[int]*models.Battery),
 		mutex:          new(sync.Mutex),
 		updateInterval: time.Second,
 	}
 
 	for i := range getBatteries() {
-		widget.batts[i] = new(Battery)
+		widget.batts[i] = new(models.Battery)
 	}
 
 	go func() {
@@ -35,8 +36,8 @@ func NewBatteryWidget() *BatteryWidget {
 	return widget
 }
 
-func (b *BatteryWidget) GetBatteries() []*Battery {
-	batteries := make([]*Battery, 0)
+func (b *BatteryWidget) GetBatteries() []*models.Battery {
+	batteries := make([]*models.Battery, 0)
 
 	b.mutex.Lock()
 	for _, value := range b.batts {

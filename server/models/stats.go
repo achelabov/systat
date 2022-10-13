@@ -1,4 +1,4 @@
-package widgets
+package models
 
 type Battery struct {
 	PercentFull float64
@@ -7,4 +7,9 @@ type Battery struct {
 
 type Cpu struct {
 	CpuLoad float64
+}
+
+type Stats struct {
+	Battery
+	Cpu
 }
