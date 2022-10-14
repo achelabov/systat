@@ -1,10 +1,14 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net"
 	"sync"
+	"time"
+
+	"github.com/achelabov/systat/server/widgets"
 )
 
 type TCPServer struct {
@@ -51,7 +55,22 @@ func (s *TCPServer) Close() {
 func (s *TCPServer) Broadcast(conn net.Conn) {
 	defer conn.Close()
 
-	//	for {
-	//		TODO: send stream to client
-	//	}
+	wdgts := widgets.NewWidgets()
+
+	ticker := time.NewTicker(time.Second)
+	for {
+		var battBuffer bytes.Buffer
+		for i, v := range wdgts.GetBatteries() {
+			battBuffer.WriteString(fmt.Sprintln("batt id: ", i, "load: ", v.PercentFull, "state: ", v.State))
+		}
+		conn.Write(battBuffer.Bytes())
+
+		var cpuBuffer bytes.Buffer
+		for i, v := range wdgts.GetCpus() {
+			cpuBuffer.WriteString(fmt.Sprintln("cpu id: ", i, "load: ", v.CpuLoad))
+		}
+		conn.Write(cpuBuffer.Bytes())
+
+		<-ticker.C
+	}
 }

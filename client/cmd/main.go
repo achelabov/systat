@@ -5,5 +5,7 @@ import (
 )
 
 func main() {
-	client.Connect()
+	c := client.NewClient()
+	c.Dial()
+	c.Start()
 }

@@ -1,6 +1,8 @@
 package client
 
 import (
+	"bufio"
+	"fmt"
 	"log"
 	"net"
 )
@@ -31,7 +33,14 @@ func (c *TCPClient) Dial() error {
 
 //TODO
 func (c *TCPClient) Start() {
-
+	for {
+		data, err := bufio.NewReader(c.conn).ReadString('\n')
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println(data)
+	}
 }
 
 func (c *TCPClient) Close() {
