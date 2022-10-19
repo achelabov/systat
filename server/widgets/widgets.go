@@ -11,3 +11,7 @@ func NewWidgets() *Widgets {
 		CpuWidget:     *NewCpuWidget(),
 	}
 }
+
+func (w *Widgets) GetWidgets() {
+
+}

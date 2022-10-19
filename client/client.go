@@ -5,4 +5,5 @@ type ChatClient interface {
 	Start()
 	Close()
 	Incoming() chan string
+	Error() chan error
 }

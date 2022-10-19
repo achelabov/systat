@@ -11,16 +11,17 @@ type TCPClient struct {
 	conn     net.Conn
 	name     string
 	incoming chan string
+	error    chan error
 }
 
 func NewClient() *TCPClient {
 	return &TCPClient{
-		incoming: make(chan string),
+		incoming: make(chan string, 5),
 	}
 }
 
-func (c *TCPClient) Dial() error {
-	addr, _ := net.ResolveTCPAddr("tcp", ":1337")
+func (c *TCPClient) Dial(address string) error {
+	addr, _ := net.ResolveTCPAddr("tcp", address)
 	conn, err := net.DialTCP("tcp", nil, addr)
 	if err != nil {
 		log.Fatal(err)
@@ -31,16 +32,24 @@ func (c *TCPClient) Dial() error {
 	return err
 }
 
-//TODO
 func (c *TCPClient) Start() {
 	for {
 		data, err := bufio.NewReader(c.conn).ReadString('\n')
 		if err != nil {
-			fmt.Println(err)
+			c.error <- err
 			return
 		}
-		fmt.Println(data)
+		c.incoming <- data
+		fmt.Println(<-c.incoming)
 	}
+}
+
+func (c *TCPClient) Incoming() chan string {
+	return c.incoming
+}
+
+func (c *TCPClient) Error() chan error {
+	return c.error
 }
 
 func (c *TCPClient) Close() {

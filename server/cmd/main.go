@@ -11,7 +11,7 @@ import (
 func main() {
 	cfg.Init()
 
-	s := server.NewTCPServer()
+	s := server.NewServer()
 
 	err := s.Listen(os.Getenv("HOST") + ":" + os.Getenv("PORT"))
 	if err != nil {
@@ -19,4 +19,5 @@ func main() {
 	}
 
 	s.Start()
+	s.Close()
 }

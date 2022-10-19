@@ -1,0 +1,27 @@
+syntax = "proto3";
+option go_package = "github.com/achelabov/systat";
+
+import "google/protobuf/empty.proto";
+
+
+service Stats {
+    rpc GetBatteries(google.protobuf.Empty) returns (stream BatteriesResponse) {}
+    rpc GetCpus(google.protobuf.Empty) returns (stream CpusResponse) {}
+}
+
+message Battery {
+    double batteryLoad = 1;
+    string state = 2;
+}
+
+message Cpu {
+    double cpuLoad = 1;
+}
+
+message BatteriesResponse {
+    repeated Battery batteryes = 1;
+}
+
+message CpusResponse {
+    repeated Cpu cpus = 1;
+}
