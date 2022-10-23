@@ -1,6 +1,7 @@
 package widgets
 
 import (
+	"context"
 	"log"
 	"math"
 	"sync"
@@ -18,11 +19,12 @@ type BatteryWidget struct {
 }
 
 func NewBatteryWidget() *BatteryWidget {
+	battsAmount := battsCount()
 	widget := &BatteryWidget{
-		batts:          make(map[int]*models.Battery),
+		batts:          make(map[int]*models.Battery, battsAmount),
 		mutex:          new(sync.Mutex),
 		updateInterval: time.Second,
-		resp:           make(chan *models.Battery, len(getBatteries())),
+		resp:           make(chan *models.Battery, battsAmount),
 	}
 
 	for i := range getBatteries() {
@@ -38,22 +40,15 @@ func NewBatteryWidget() *BatteryWidget {
 	return widget
 }
 
-func (b *BatteryWidget) GetBatteries(cancel <-chan struct{}) <-chan []*models.Battery {
-	//batteries := make([]*models.Battery, 0)
-
-	//b.mutex.Lock()
-	//for _, value := range b.batts {
-	//	batteries = append(batteries, value)
-	//}
-	//b.mutex.Unlock()
+func (b *BatteryWidget) GetBatteries(ctx context.Context) <-chan []*models.Battery {
 	out := make(chan []*models.Battery)
 
 	go func() {
 		defer close(out)
 		for {
 			select {
-			case out <- <-toBatts(cancel, b.resp):
-			case <-cancel:
+			case out <- <-toBatts(ctx, b.resp):
+			case <-ctx.Done():
 				return
 			}
 		}
@@ -62,22 +57,22 @@ func (b *BatteryWidget) GetBatteries(cancel <-chan struct{}) <-chan []*models.Ba
 	return out
 }
 
-func toBatts(cancel <-chan struct{}, batt <-chan *models.Battery) <-chan []*models.Battery {
-	battAmount := len(getBatteries())
-	batteries := make([]*models.Battery, battAmount)
+//receives batts one at a time until their number is less than the number of batteries
+func toBatts(ctx context.Context, batt <-chan *models.Battery) <-chan []*models.Battery {
+	battsAmount := battsCount()
+	batteries := make([]*models.Battery, battsAmount)
 	out := make(chan []*models.Battery)
 
 	go func() {
 		defer close(out)
 
 		idx := 0
-		for idx < battAmount {
+		for idx < battsAmount {
 			select {
 			case batt := <-batt:
 				batteries[idx] = batt
-				//				fmt.Println("idx: ", idx, "batt: ", batt, "amount: ", battAmount)
 				idx++
-			case <-cancel:
+			case <-ctx.Done():
 				return
 			}
 		}
@@ -108,4 +103,12 @@ func getBatteries() []*battery.Battery {
 	}
 
 	return batteries
+}
+
+func (b *BatteryWidget) BattsCount() int {
+	return len(getBatteries())
+}
+
+func battsCount() int {
+	return len(getBatteries())
 }

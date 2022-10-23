@@ -8,18 +8,18 @@ import (
 	"google.golang.org/grpc"
 )
 
-type server struct {
+type grpcServer struct {
 	srv      *grpc.Server
 	listener net.Listener
 }
 
-func NewServer() *server {
-	return &server{
+func NewGrpcServer() *grpcServer {
+	return &grpcServer{
 		srv: grpc.NewServer(),
 	}
 }
 
-func (s *server) Listen(address string) error {
+func (s *grpcServer) Listen(address string) error {
 	listener, err := net.Listen("tcp", address)
 	s.listener = listener
 
@@ -28,8 +28,8 @@ func (s *server) Listen(address string) error {
 	return err
 }
 
-func (s *server) Start() {
-	pb.RegisterStatsServer(s.srv, pb.UnimplementedStatsServer{})
+func (s *grpcServer) Start() {
+	pb.RegisterStatsServer(s.srv, &statsServer{})
 
 	log.Println("start server")
 
@@ -38,12 +38,7 @@ func (s *server) Start() {
 	}
 }
 
-func (s *server) Close() {
+func (s *grpcServer) Close() {
 	s.listener.Close()
-}
-
-//TODO
-func (s *server) GetBatteries() error {
-
-	return nil
+	s.srv.Stop()
 }

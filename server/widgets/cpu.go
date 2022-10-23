@@ -1,6 +1,7 @@
 package widgets
 
 import (
+	"context"
 	"log"
 	"sync"
 	"time"
@@ -14,6 +15,7 @@ type CpuWidget struct {
 	cpus           map[int]*models.Cpu
 	mutex          *sync.Mutex
 	updateInterval time.Duration
+	resp           chan *models.Cpu
 }
 
 func NewCpuWidget() *CpuWidget {
@@ -23,9 +25,10 @@ func NewCpuWidget() *CpuWidget {
 	}
 
 	widget := &CpuWidget{
-		cpus:           make(map[int]*models.Cpu),
+		cpus:           make(map[int]*models.Cpu, cpuCount),
 		mutex:          new(sync.Mutex),
-		updateInterval: time.Second,
+		updateInterval: time.Second * 2,
+		resp:           make(chan *models.Cpu),
 	}
 
 	for i := 0; i < cpuCount; i++ {
@@ -41,16 +44,45 @@ func NewCpuWidget() *CpuWidget {
 	return widget
 }
 
-func (c *CpuWidget) GetCpus() []*models.Cpu {
-	cpus := make([]*models.Cpu, 0)
+func (c *CpuWidget) GetCpus(ctx context.Context) <-chan []*models.Cpu {
+	out := make(chan []*models.Cpu)
 
-	c.mutex.Lock()
-	for _, value := range c.cpus {
-		cpus = append(cpus, value)
-	}
-	c.mutex.Unlock()
+	go func() {
+		defer close(out)
+		for {
+			select {
+			case out <- <-toCpus(ctx, c.resp):
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 
-	return cpus
+	return out
+}
+
+func toCpus(ctx context.Context, cpu <-chan *models.Cpu) <-chan []*models.Cpu {
+	cpusAmount := cpusCount()
+	cpus := make([]*models.Cpu, cpusAmount)
+	out := make(chan []*models.Cpu)
+
+	go func() {
+		defer close(out)
+
+		idx := 0
+		for idx < cpusAmount {
+			select {
+			case cpu := <-cpu:
+				cpus[idx] = cpu
+				idx++
+			case <-ctx.Done():
+				return
+			}
+		}
+		out <- cpus
+	}()
+
+	return out
 }
 
 func (c *CpuWidget) GetAverage() float64 {
@@ -90,6 +122,20 @@ func (c *CpuWidget) update() {
 
 		for i, percent := range cpuPercent {
 			c.cpus[i].CpuLoad = percent
+
+			c.resp <- c.cpus[i]
 		}
 	}()
+}
+
+func (c *CpuWidget) CpusCount() int {
+	return cpusCount()
+}
+
+func cpusCount() int {
+	cnt, err := cpuInf.Counts(true)
+	if err != nil {
+		log.Fatal("can't get cpu count")
+	}
+	return cnt
 }

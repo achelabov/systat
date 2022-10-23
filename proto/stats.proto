@@ -19,7 +19,7 @@ message Cpu {
 }
 
 message BatteriesResponse {
-    repeated Battery batteryes = 1;
+    repeated Battery batteries = 1;
 }
 
 message CpusResponse {

@@ -11,7 +11,7 @@ import (
 func main() {
 	cfg.Init()
 
-	s := server.NewServer()
+	s := server.NewGrpcServer()
 
 	err := s.Listen(os.Getenv("HOST") + ":" + os.Getenv("PORT"))
 	if err != nil {
