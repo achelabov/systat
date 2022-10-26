@@ -31,7 +31,11 @@ func (c *grpcClient) Dial(address string) error {
 
 func (c *grpcClient) Start() {
 	client := pb.NewStatsClient(c.conn)
-	stream, err := client.GetCpus(context.Background(), new(emptypb.Empty))
+	cpusStream, err := client.GetCpus(context.Background(), new(emptypb.Empty))
+	if err != nil {
+		log.Fatalf("openn stream error %v", err)
+	}
+	battsStream, err := client.GetBatteries(context.Background(), new(emptypb.Empty))
 	if err != nil {
 		log.Fatalf("openn stream error %v", err)
 	}
@@ -39,9 +43,9 @@ func (c *grpcClient) Start() {
 	//ctx := stream.Context()
 	done := make(chan bool)
 
-	go func() {
+	getCpus := func(done chan<- bool) {
 		for {
-			resp, err := stream.Recv()
+			resp, err := cpusStream.Recv()
 			if err == io.EOF {
 				done <- true //close(done)
 				return
@@ -51,12 +55,36 @@ func (c *grpcClient) Start() {
 			}
 			log.Println("--------------------------------------------------")
 			for i := 0; i < len(resp.Cpus); i++ {
-				log.Printf("Resp received: cpus %d is %s ", i, resp.Cpus[i])
+				log.Printf("cpus %d load is %s ", i, resp.Cpus[i])
+			}
+			log.Println("average cpus load: ", resp.AverageLoad)
+			log.Println("--------------------------------------------------")
+		}
+	}
+
+	getBatts := func(done chan<- bool) {
+		for {
+			resp, err := battsStream.Recv()
+			if err == io.EOF {
+				done <- true //close(done)
+				return
+			}
+			if err != nil {
+				log.Fatalf("can not receive %v", err)
+			}
+			log.Println("--------------------------------------------------")
+			for i := 0; i < len(resp.Batteries); i++ {
+				log.Printf("batt %d load is %f, state is %s",
+					i, resp.Batteries[i].BatteryLoad, resp.Batteries[i].State)
 			}
 			log.Println("--------------------------------------------------")
 		}
-	}()
+	}
 
+	go getCpus(done)
+	go getBatts(done)
+
+	<-done
 	<-done
 	log.Printf("finished")
 }

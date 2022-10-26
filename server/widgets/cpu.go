@@ -11,11 +11,11 @@ import (
 )
 
 type CpuWidget struct {
-	averageLoad    float64
-	cpus           map[int]*models.Cpu
+	cpus           []*models.Cpu
 	mutex          *sync.Mutex
 	updateInterval time.Duration
-	resp           chan *models.Cpu
+	cpusLoad       chan []*models.Cpu
+	avgLoad        chan float64
 }
 
 func NewCpuWidget() *CpuWidget {
@@ -25,10 +25,11 @@ func NewCpuWidget() *CpuWidget {
 	}
 
 	widget := &CpuWidget{
-		cpus:           make(map[int]*models.Cpu, cpuCount),
+		cpus:           make([]*models.Cpu, cpuCount),
 		mutex:          new(sync.Mutex),
-		updateInterval: time.Second * 2,
-		resp:           make(chan *models.Cpu),
+		updateInterval: time.Second,
+		cpusLoad:       make(chan []*models.Cpu, cpuCount),
+		avgLoad:        make(chan float64),
 	}
 
 	for i := 0; i < cpuCount; i++ {
@@ -51,7 +52,7 @@ func (c *CpuWidget) GetCpus(ctx context.Context) <-chan []*models.Cpu {
 		defer close(out)
 		for {
 			select {
-			case out <- <-toCpus(ctx, c.resp):
+			case out <- <-c.cpusLoad:
 			case <-ctx.Done():
 				return
 			}
@@ -61,36 +62,44 @@ func (c *CpuWidget) GetCpus(ctx context.Context) <-chan []*models.Cpu {
 	return out
 }
 
-func toCpus(ctx context.Context, cpu <-chan *models.Cpu) <-chan []*models.Cpu {
-	cpusAmount := cpusCount()
-	cpus := make([]*models.Cpu, cpusAmount)
-	out := make(chan []*models.Cpu)
+//receives cpus one at a time as long as their number is less than the number of processor cores
+//func toCpus(ctx context.Context, cpu <-chan *models.Cpu) <-chan []*models.Cpu {
+//	cpusAmount := cpusCount()
+//	cpus := make([]*models.Cpu, cpusAmount)
+//	out := make(chan []*models.Cpu)
+//
+//	go func() {
+//		defer close(out)
+//
+//		for idx := 0; idx < cpusAmount; idx++ {
+//			select {
+//			case cpu := <-cpu:
+//				cpus[idx] = cpu
+//			case <-ctx.Done():
+//				return
+//			}
+//		}
+//		out <- cpus
+//	}()
+//
+//	return out
+//}
+
+func (c *CpuWidget) GetAverage(ctx context.Context) <-chan float64 {
+	out := make(chan float64)
 
 	go func() {
 		defer close(out)
-
-		idx := 0
-		for idx < cpusAmount {
+		for {
 			select {
-			case cpu := <-cpu:
-				cpus[idx] = cpu
-				idx++
+			case out <- <-c.avgLoad:
 			case <-ctx.Done():
 				return
 			}
 		}
-		out <- cpus
 	}()
 
 	return out
-}
-
-func (c *CpuWidget) GetAverage() float64 {
-	c.mutex.Lock()
-	avg := c.averageLoad
-	c.mutex.Unlock()
-
-	return avg
 }
 
 func (c *CpuWidget) update() {
@@ -101,9 +110,7 @@ func (c *CpuWidget) update() {
 			log.Fatal("can't get average cpu usage percent")
 		}
 
-		c.mutex.Lock()
-		c.averageLoad = cpuPercent[0]
-		c.mutex.Unlock()
+		c.avgLoad <- cpuPercent[0]
 	}()
 
 	//load per cpu
@@ -118,13 +125,12 @@ func (c *CpuWidget) update() {
 		}
 
 		c.mutex.Lock()
-		defer c.mutex.Unlock()
-
 		for i, percent := range cpuPercent {
 			c.cpus[i].CpuLoad = percent
-
-			c.resp <- c.cpus[i]
 		}
+		c.mutex.Unlock()
+
+		c.cpusLoad <- c.cpus
 	}()
 }
 

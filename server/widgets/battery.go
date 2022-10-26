@@ -12,19 +12,19 @@ import (
 )
 
 type BatteryWidget struct {
-	batts          map[int]*models.Battery
+	batts          []*models.Battery
 	mutex          *sync.Mutex
 	updateInterval time.Duration
-	resp           chan *models.Battery
+	battsLoad      chan []*models.Battery
 }
 
 func NewBatteryWidget() *BatteryWidget {
 	battsAmount := battsCount()
 	widget := &BatteryWidget{
-		batts:          make(map[int]*models.Battery, battsAmount),
+		batts:          make([]*models.Battery, battsAmount),
 		mutex:          new(sync.Mutex),
 		updateInterval: time.Second,
-		resp:           make(chan *models.Battery, battsAmount),
+		battsLoad:      make(chan []*models.Battery),
 	}
 
 	for i := range getBatteries() {
@@ -47,7 +47,7 @@ func (b *BatteryWidget) GetBatteries(ctx context.Context) <-chan []*models.Batte
 		defer close(out)
 		for {
 			select {
-			case out <- <-toBatts(ctx, b.resp):
+			case out <- <-b.battsLoad:
 			case <-ctx.Done():
 				return
 			}
@@ -58,42 +58,41 @@ func (b *BatteryWidget) GetBatteries(ctx context.Context) <-chan []*models.Batte
 }
 
 //receives batts one at a time until their number is less than the number of batteries
-func toBatts(ctx context.Context, batt <-chan *models.Battery) <-chan []*models.Battery {
-	battsAmount := battsCount()
-	batteries := make([]*models.Battery, battsAmount)
-	out := make(chan []*models.Battery)
-
-	go func() {
-		defer close(out)
-
-		idx := 0
-		for idx < battsAmount {
-			select {
-			case batt := <-batt:
-				batteries[idx] = batt
-				idx++
-			case <-ctx.Done():
-				return
-			}
-		}
-		out <- batteries
-	}()
-
-	return out
-}
+//func toBatts(ctx context.Context, batt <-chan *models.Battery) <-chan []*models.Battery {
+//	battsAmount := battsCount()
+//	batteries := make([]*models.Battery, battsAmount)
+//	out := make(chan []*models.Battery)
+//
+//	go func() {
+//		defer close(out)
+//
+//		idx := 0
+//		for idx < battsAmount {
+//			select {
+//			case batt := <-batt:
+//				batteries[idx] = batt
+//				idx++
+//			case <-ctx.Done():
+//				return
+//			}
+//		}
+//		out <- batteries
+//	}()
+//
+//	return out
+//}
 
 func (b *BatteryWidget) update() {
 	batteries := getBatteries()
 
 	b.mutex.Lock()
-	defer b.mutex.Unlock()
-
 	for i, battery := range batteries {
 		b.batts[i].BatteryLoad = math.Abs(battery.Current/battery.Full) * 100.0
 		b.batts[i].State = battery.State.String()
-
-		b.resp <- b.batts[i]
 	}
+	b.mutex.Unlock()
+
+	b.battsLoad <- b.batts
 }
 
 func getBatteries() []*battery.Battery {

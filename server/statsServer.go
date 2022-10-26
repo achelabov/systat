@@ -64,7 +64,7 @@ func (s *statsServer) GetCpus(in *emptypb.Empty, srv pb.Stats_GetCpusServer) err
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 5; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -76,18 +76,14 @@ func (s *statsServer) GetCpus(in *emptypb.Empty, srv pb.Stats_GetCpusServer) err
 				cpusResp.Cpus[i] = new(pb.Cpu)
 			}
 
-			for {
-				cpus, ok := <-cpuWidget.GetCpus(ctx)
-				if !ok {
-					return
-				}
-
+			for cpus := range cpuWidget.GetCpus(ctx) {
 				for i, v := range cpus {
 					cpusResp.Cpus[i].CpuLoad = v.CpuLoad
+				}
+				cpusResp.AverageLoad = <-cpuWidget.GetAverage(ctx)
 
-					if err := srv.Send(cpusResp); err != nil {
-						log.Printf("send error %v", err)
-					}
+				if err := srv.Send(cpusResp); err != nil {
+					log.Printf("send error %v", err)
 				}
 			}
 		}()

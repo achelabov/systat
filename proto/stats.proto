@@ -24,4 +24,5 @@ message BatteriesResponse {
 
 message CpusResponse {
     repeated Cpu cpus = 1;
+    double averageLoad = 2;
 }
