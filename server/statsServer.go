@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"log"
 	"sync"
 
@@ -18,11 +17,10 @@ func (s *statsServer) GetBatteries(in *emptypb.Empty, srv pb.Stats_GetBatteriesS
 	var wg sync.WaitGroup
 	battWidget := *widgets.NewBatteryWidget()
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	cancel := make(chan struct{})
+	defer close(cancel)
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 5; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -34,19 +32,13 @@ func (s *statsServer) GetBatteries(in *emptypb.Empty, srv pb.Stats_GetBatteriesS
 				battsResp.Batteries[i] = new(pb.Battery)
 			}
 
-			for {
-				batts, ok := <-battWidget.GetBatteries(ctx)
-				if !ok {
-					return
-				}
-
+			for batts := range battWidget.GetBatteries(cancel) {
 				for i, v := range batts {
 					battsResp.Batteries[i].BatteryLoad = v.BatteryLoad
 					battsResp.Batteries[i].State = v.State
-
-					if err := srv.Send(battsResp); err != nil {
-						log.Printf("send error %v", err)
-					}
+				}
+				if err := srv.Send(battsResp); err != nil {
+					log.Printf("send error %v", err)
 				}
 			}
 		}()
@@ -60,9 +52,8 @@ func (s *statsServer) GetCpus(in *emptypb.Empty, srv pb.Stats_GetCpusServer) err
 	var wg sync.WaitGroup
 	cpuWidget := *widgets.NewCpuWidget()
 
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	cancel := make(chan struct{})
+	defer close(cancel)
 
 	for i := 0; i < 5; i++ {
 		wg.Add(1)
@@ -76,11 +67,11 @@ func (s *statsServer) GetCpus(in *emptypb.Empty, srv pb.Stats_GetCpusServer) err
 				cpusResp.Cpus[i] = new(pb.Cpu)
 			}
 
-			for cpus := range cpuWidget.GetCpus(ctx) {
+			for cpus := range cpuWidget.GetCpus(cancel) {
 				for i, v := range cpus {
 					cpusResp.Cpus[i].CpuLoad = v.CpuLoad
 				}
-				cpusResp.AverageLoad = <-cpuWidget.GetAverage(ctx)
+				cpusResp.AverageLoad = <-cpuWidget.GetAverageLoad(cancel)
 
 				if err := srv.Send(cpusResp); err != nil {
 					log.Printf("send error %v", err)

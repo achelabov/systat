@@ -1,7 +1,6 @@
 package widgets
 
 import (
-	"context"
 	"log"
 	"math"
 	"sync"
@@ -40,7 +39,7 @@ func NewBatteryWidget() *BatteryWidget {
 	return widget
 }
 
-func (b *BatteryWidget) GetBatteries(ctx context.Context) <-chan []*models.Battery {
+func (b *BatteryWidget) GetBatteries(cancel <-chan struct{}) <-chan []*models.Battery {
 	out := make(chan []*models.Battery)
 
 	go func() {
@@ -48,7 +47,7 @@ func (b *BatteryWidget) GetBatteries(ctx context.Context) <-chan []*models.Batte
 		for {
 			select {
 			case out <- <-b.battsLoad:
-			case <-ctx.Done():
+			case <-cancel:
 				return
 			}
 		}

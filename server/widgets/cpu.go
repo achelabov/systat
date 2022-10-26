@@ -1,7 +1,6 @@
 package widgets
 
 import (
-	"context"
 	"log"
 	"sync"
 	"time"
@@ -28,7 +27,7 @@ func NewCpuWidget() *CpuWidget {
 		cpus:           make([]*models.Cpu, cpuCount),
 		mutex:          new(sync.Mutex),
 		updateInterval: time.Second,
-		cpusLoad:       make(chan []*models.Cpu, cpuCount),
+		cpusLoad:       make(chan []*models.Cpu),
 		avgLoad:        make(chan float64),
 	}
 
@@ -45,7 +44,7 @@ func NewCpuWidget() *CpuWidget {
 	return widget
 }
 
-func (c *CpuWidget) GetCpus(ctx context.Context) <-chan []*models.Cpu {
+func (c *CpuWidget) GetCpus(cancel <-chan struct{}) <-chan []*models.Cpu {
 	out := make(chan []*models.Cpu)
 
 	go func() {
@@ -53,7 +52,7 @@ func (c *CpuWidget) GetCpus(ctx context.Context) <-chan []*models.Cpu {
 		for {
 			select {
 			case out <- <-c.cpusLoad:
-			case <-ctx.Done():
+			case <-cancel:
 				return
 			}
 		}
@@ -85,7 +84,7 @@ func (c *CpuWidget) GetCpus(ctx context.Context) <-chan []*models.Cpu {
 //	return out
 //}
 
-func (c *CpuWidget) GetAverage(ctx context.Context) <-chan float64 {
+func (c *CpuWidget) GetAverageLoad(cancel <-chan struct{}) <-chan float64 {
 	out := make(chan float64)
 
 	go func() {
@@ -93,7 +92,7 @@ func (c *CpuWidget) GetAverage(ctx context.Context) <-chan float64 {
 		for {
 			select {
 			case out <- <-c.avgLoad:
-			case <-ctx.Done():
+			case <-cancel:
 				return
 			}
 		}

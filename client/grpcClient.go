@@ -33,21 +33,21 @@ func (c *grpcClient) Start() {
 	client := pb.NewStatsClient(c.conn)
 	cpusStream, err := client.GetCpus(context.Background(), new(emptypb.Empty))
 	if err != nil {
-		log.Fatalf("openn stream error %v", err)
+		log.Fatalf("openn cpus stream error %v", err)
 	}
 	battsStream, err := client.GetBatteries(context.Background(), new(emptypb.Empty))
 	if err != nil {
-		log.Fatalf("openn stream error %v", err)
+		log.Fatalf("openn batts stream error %v", err)
 	}
 
 	//ctx := stream.Context()
-	done := make(chan bool)
+	done := make(chan struct{})
 
-	getCpus := func(done chan<- bool) {
+	getCpus := func(done chan<- struct{}) {
 		for {
 			resp, err := cpusStream.Recv()
 			if err == io.EOF {
-				done <- true //close(done)
+				done <- struct{}{} //close(done)
 				return
 			}
 			if err != nil {
@@ -62,11 +62,11 @@ func (c *grpcClient) Start() {
 		}
 	}
 
-	getBatts := func(done chan<- bool) {
+	getBatts := func(done chan<- struct{}) {
 		for {
 			resp, err := battsStream.Recv()
 			if err == io.EOF {
-				done <- true //close(done)
+				done <- struct{}{} //close(done)
 				return
 			}
 			if err != nil {
