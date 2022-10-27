@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var webCmd = &cobra.Command{
+var runCmd = &cobra.Command{
 	Use:   "",
 	Short: "",
 	Long:  ``,
@@ -14,5 +14,5 @@ var webCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(webCmd)
+	rootCmd.AddCommand(runCmd)
 }

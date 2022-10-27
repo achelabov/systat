@@ -4,9 +4,10 @@ option go_package = "github.com/achelabov/systat";
 import "google/protobuf/empty.proto";
 
 
-service Stats {
-    rpc GetBatteries(google.protobuf.Empty) returns (stream BatteriesResponse) {}
-    rpc GetCpus(google.protobuf.Empty) returns (stream CpusResponse) {}
+service StatsService {
+ //   rpc GetBatteries(google.protobuf.Empty) returns (stream BatteriesResponse) {}
+ //   rpc GetCpus(google.protobuf.Empty) returns (stream CpusResponse) {}
+    rpc GetStats(google.protobuf.Empty) returns (stream StatsResponse) {}
 }
 
 message Battery {
@@ -16,6 +17,11 @@ message Battery {
 
 message Cpu {
     double cpuLoad = 1;
+}
+
+message StatsResponse {
+    BatteriesResponse batteries = 1;
+    CpusResponse cpus = 2;
 }
 
 message BatteriesResponse {

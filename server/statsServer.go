@@ -3,6 +3,7 @@ package server
 import (
 	"log"
 	"sync"
+	"time"
 
 	pb "github.com/achelabov/systat/proto"
 	"github.com/achelabov/systat/server/widgets"
@@ -10,20 +11,67 @@ import (
 )
 
 type statsServer struct {
-	pb.UnimplementedStatsServer
+	pb.UnimplementedStatsServiceServer
 }
 
-func (s *statsServer) GetBatteries(in *emptypb.Empty, srv pb.Stats_GetBatteriesServer) error {
+func (s *statsServer) GetStats(in *emptypb.Empty, srv pb.StatsService_GetStatsServer) error {
 	var wg sync.WaitGroup
-	battWidget := *widgets.NewBatteryWidget()
+
+	batts := make(chan *pb.BatteriesResponse)
+	cpus := make(chan *pb.CpusResponse)
 
 	cancel := make(chan struct{})
 	defer close(cancel)
 
+	wg.Add(2)
+	recieve := func() {
+		defer close(batts)
+		defer close(cpus)
+
+		defer wg.Done()
+
+		for {
+			select {
+			case batts <- <-GetBatteries(cancel):
+			case cpus <- <-GetCpus(cancel):
+			}
+		}
+	}
+
+	ticker := time.NewTicker(time.Second)
+	send := func() {
+		defer wg.Done()
+
+		for {
+			select {
+			case <-ticker.C:
+				statsResp := new(pb.StatsResponse)
+				statsResp.Batteries = <-batts
+				statsResp.Cpus = <-cpus
+
+				if err := srv.Send(statsResp); err != nil {
+					log.Printf("send error %v", err)
+				}
+			case <-cancel:
+				return
+			}
+		}
+	}
+
+	go recieve()
+	time.Sleep(time.Second)
+	go send()
+
+	wg.Wait()
+	return nil
+}
+
+func GetBatteries(cancel <-chan struct{}) <-chan *pb.BatteriesResponse {
+	battWidget := *widgets.NewBatteryWidget()
+	out := make(chan *pb.BatteriesResponse)
+
 	for i := 0; i < 5; i++ {
-		wg.Add(1)
 		go func() {
-			defer wg.Done()
 
 			battsResp := &pb.BatteriesResponse{
 				Batteries: make([]*pb.Battery, battWidget.BattsCount()),
@@ -37,29 +85,20 @@ func (s *statsServer) GetBatteries(in *emptypb.Empty, srv pb.Stats_GetBatteriesS
 					battsResp.Batteries[i].BatteryLoad = v.BatteryLoad
 					battsResp.Batteries[i].State = v.State
 				}
-				if err := srv.Send(battsResp); err != nil {
-					log.Printf("send error %v", err)
-				}
+				out <- battsResp
 			}
 		}()
 	}
 
-	wg.Wait()
-	return nil
+	return out
 }
 
-func (s *statsServer) GetCpus(in *emptypb.Empty, srv pb.Stats_GetCpusServer) error {
-	var wg sync.WaitGroup
+func GetCpus(cancel <-chan struct{}) <-chan *pb.CpusResponse {
 	cpuWidget := *widgets.NewCpuWidget()
-
-	cancel := make(chan struct{})
-	defer close(cancel)
+	out := make(chan *pb.CpusResponse)
 
 	for i := 0; i < 5; i++ {
-		wg.Add(1)
 		go func() {
-			defer wg.Done()
-
 			cpusResp := &pb.CpusResponse{
 				Cpus: make([]*pb.Cpu, cpuWidget.CpusCount()),
 			}
@@ -73,12 +112,10 @@ func (s *statsServer) GetCpus(in *emptypb.Empty, srv pb.Stats_GetCpusServer) err
 				}
 				cpusResp.AverageLoad = <-cpuWidget.GetAverageLoad(cancel)
 
-				if err := srv.Send(cpusResp); err != nil {
-					log.Printf("send error %v", err)
-				}
+				out <- cpusResp
 			}
 		}()
 	}
-	wg.Wait()
-	return nil
+
+	return out
 }

@@ -11,7 +11,8 @@ import (
 )
 
 type grpcClient struct {
-	conn *grpc.ClientConn
+	conn   *grpc.ClientConn
+	client pb.StatsServiceClient
 }
 
 func NewClient() *grpcClient {
@@ -30,23 +31,36 @@ func (c *grpcClient) Dial(address string) error {
 }
 
 func (c *grpcClient) Start() {
-	client := pb.NewStatsClient(c.conn)
-	cpusStream, err := client.GetCpus(context.Background(), new(emptypb.Empty))
+	c.client = pb.NewStatsServiceClient(c.conn)
+}
+
+func (c *grpcClient) Close() {
+	c.conn.Close()
+}
+
+func (c *grpcClient) Recieve() {
+	//cpusStream, err := c.client.GetCpus(context.Background(), new(emptypb.Empty))
+	//if err != nil {
+	//	log.Fatalf("open cpus stream error %v", err)
+	//}
+	//battsStream, err := c.client.GetBatteries(context.Background(), new(emptypb.Empty))
+	//if err != nil {
+	//	log.Fatalf("open batts stream error %v", err)
+	//}
+
+	stream, err := c.client.GetStats(context.Background(), new(emptypb.Empty))
 	if err != nil {
-		log.Fatalf("openn cpus stream error %v", err)
-	}
-	battsStream, err := client.GetBatteries(context.Background(), new(emptypb.Empty))
-	if err != nil {
-		log.Fatalf("openn batts stream error %v", err)
+		log.Fatalf("open stream error %v", err)
 	}
 
 	//ctx := stream.Context()
 	done := make(chan struct{})
 
-	getCpus := func(done chan<- struct{}) {
+	getStats := func() {
 		for {
-			resp, err := cpusStream.Recv()
+			resp, err := stream.Recv()
 			if err == io.EOF {
+				log.Println("_EOF_")
 				done <- struct{}{} //close(done)
 				return
 			}
@@ -54,41 +68,44 @@ func (c *grpcClient) Start() {
 				log.Fatalf("can not receive %v", err)
 			}
 			log.Println("--------------------------------------------------")
-			for i := 0; i < len(resp.Cpus); i++ {
-				log.Printf("cpus %d load is %s ", i, resp.Cpus[i])
+			for i := 0; i < len(resp.Cpus.Cpus); i++ {
+				log.Printf("cpus %d load is %s ", i, resp.Cpus.Cpus[i])
 			}
-			log.Println("average cpus load: ", resp.AverageLoad)
+			log.Println("average cpus load: ", resp.Cpus.AverageLoad)
 			log.Println("--------------------------------------------------")
-		}
-	}
 
-	getBatts := func(done chan<- struct{}) {
-		for {
-			resp, err := battsStream.Recv()
-			if err == io.EOF {
-				done <- struct{}{} //close(done)
-				return
-			}
-			if err != nil {
-				log.Fatalf("can not receive %v", err)
-			}
 			log.Println("--------------------------------------------------")
-			for i := 0; i < len(resp.Batteries); i++ {
+			for i := 0; i < len(resp.Batteries.Batteries); i++ {
 				log.Printf("batt %d load is %f, state is %s",
-					i, resp.Batteries[i].BatteryLoad, resp.Batteries[i].State)
+					i, resp.Batteries.Batteries[i].BatteryLoad, resp.Batteries.Batteries[i].State)
 			}
 			log.Println("--------------------------------------------------")
 		}
 	}
 
-	go getCpus(done)
-	go getBatts(done)
+	//getBatts := func(done chan<- struct{}) {
+	//	for {
+	//		resp, err := battsStream.Recv()
+	//		if err == io.EOF {
+	//			done <- struct{}{} //close(done)
+	//			return
+	//		}
+	//		if err != nil {
+	//			log.Fatalf("can not receive %v", err)
+	//		}
+	//		log.Println("--------------------------------------------------")
+	//		for i := 0; i < len(resp.Batteries); i++ {
+	//			log.Printf("batt %d load is %f, state is %s",
+	//				i, resp.Batteries[i].BatteryLoad, resp.Batteries[i].State)
+	//		}
+	//		log.Println("--------------------------------------------------")
+	//	}
+	//}
 
-	<-done
+	go getStats()
+	//go getBatts(done)
+
+	//<-done
 	<-done
 	log.Printf("finished")
-}
-
-func (c *grpcClient) Close() {
-	c.conn.Close()
 }

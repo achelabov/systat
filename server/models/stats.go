@@ -8,3 +8,10 @@ type Battery struct {
 type Cpu struct {
 	CpuLoad float64
 }
+
+type Memory struct {
+	Total       int64
+	Avaliable   int64
+	Used        int64
+	UsedPercent int64
+}

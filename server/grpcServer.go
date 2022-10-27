@@ -29,7 +29,7 @@ func (s *grpcServer) Listen(address string) error {
 }
 
 func (s *grpcServer) Start() {
-	pb.RegisterStatsServer(s.srv, &statsServer{})
+	pb.RegisterStatsServiceServer(s.srv, &statsServer{})
 
 	log.Println("start server")
 

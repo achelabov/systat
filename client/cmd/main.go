@@ -13,5 +13,6 @@ func main() {
 	c := client.NewClient()
 	c.Dial(os.Getenv("HOST") + ":" + os.Getenv("PORT"))
 	c.Start()
+	c.Recieve()
 	c.Close()
 }

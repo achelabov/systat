@@ -19,28 +19,29 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// StatsClient is the client API for Stats service.
+// StatsServiceClient is the client API for StatsService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type StatsClient interface {
-	GetBatteries(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Stats_GetBatteriesClient, error)
-	GetCpus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Stats_GetCpusClient, error)
+type StatsServiceClient interface {
+	//   rpc GetBatteries(google.protobuf.Empty) returns (stream BatteriesResponse) {}
+	//   rpc GetCpus(google.protobuf.Empty) returns (stream CpusResponse) {}
+	GetStats(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (StatsService_GetStatsClient, error)
 }
 
-type statsClient struct {
+type statsServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewStatsClient(cc grpc.ClientConnInterface) StatsClient {
-	return &statsClient{cc}
+func NewStatsServiceClient(cc grpc.ClientConnInterface) StatsServiceClient {
+	return &statsServiceClient{cc}
 }
 
-func (c *statsClient) GetBatteries(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Stats_GetBatteriesClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Stats_ServiceDesc.Streams[0], "/Stats/GetBatteries", opts...)
+func (c *statsServiceClient) GetStats(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (StatsService_GetStatsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &StatsService_ServiceDesc.Streams[0], "/StatsService/GetStats", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &statsGetBatteriesClient{stream}
+	x := &statsServiceGetStatsClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -50,145 +51,85 @@ func (c *statsClient) GetBatteries(ctx context.Context, in *emptypb.Empty, opts 
 	return x, nil
 }
 
-type Stats_GetBatteriesClient interface {
-	Recv() (*BatteriesResponse, error)
+type StatsService_GetStatsClient interface {
+	Recv() (*StatsResponse, error)
 	grpc.ClientStream
 }
 
-type statsGetBatteriesClient struct {
+type statsServiceGetStatsClient struct {
 	grpc.ClientStream
 }
 
-func (x *statsGetBatteriesClient) Recv() (*BatteriesResponse, error) {
-	m := new(BatteriesResponse)
+func (x *statsServiceGetStatsClient) Recv() (*StatsResponse, error) {
+	m := new(StatsResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *statsClient) GetCpus(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (Stats_GetCpusClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Stats_ServiceDesc.Streams[1], "/Stats/GetCpus", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &statsGetCpusClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type Stats_GetCpusClient interface {
-	Recv() (*CpusResponse, error)
-	grpc.ClientStream
-}
-
-type statsGetCpusClient struct {
-	grpc.ClientStream
-}
-
-func (x *statsGetCpusClient) Recv() (*CpusResponse, error) {
-	m := new(CpusResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-// StatsServer is the server API for Stats service.
-// All implementations must embed UnimplementedStatsServer
+// StatsServiceServer is the server API for StatsService service.
+// All implementations must embed UnimplementedStatsServiceServer
 // for forward compatibility
-type StatsServer interface {
-	GetBatteries(*emptypb.Empty, Stats_GetBatteriesServer) error
-	GetCpus(*emptypb.Empty, Stats_GetCpusServer) error
-	mustEmbedUnimplementedStatsServer()
+type StatsServiceServer interface {
+	//   rpc GetBatteries(google.protobuf.Empty) returns (stream BatteriesResponse) {}
+	//   rpc GetCpus(google.protobuf.Empty) returns (stream CpusResponse) {}
+	GetStats(*emptypb.Empty, StatsService_GetStatsServer) error
+	mustEmbedUnimplementedStatsServiceServer()
 }
 
-// UnimplementedStatsServer must be embedded to have forward compatible implementations.
-type UnimplementedStatsServer struct {
+// UnimplementedStatsServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedStatsServiceServer struct {
 }
 
-func (UnimplementedStatsServer) GetBatteries(*emptypb.Empty, Stats_GetBatteriesServer) error {
-	return status.Errorf(codes.Unimplemented, "method GetBatteries not implemented")
+func (UnimplementedStatsServiceServer) GetStats(*emptypb.Empty, StatsService_GetStatsServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetStats not implemented")
 }
-func (UnimplementedStatsServer) GetCpus(*emptypb.Empty, Stats_GetCpusServer) error {
-	return status.Errorf(codes.Unimplemented, "method GetCpus not implemented")
-}
-func (UnimplementedStatsServer) mustEmbedUnimplementedStatsServer() {}
+func (UnimplementedStatsServiceServer) mustEmbedUnimplementedStatsServiceServer() {}
 
-// UnsafeStatsServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to StatsServer will
+// UnsafeStatsServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to StatsServiceServer will
 // result in compilation errors.
-type UnsafeStatsServer interface {
-	mustEmbedUnimplementedStatsServer()
+type UnsafeStatsServiceServer interface {
+	mustEmbedUnimplementedStatsServiceServer()
 }
 
-func RegisterStatsServer(s grpc.ServiceRegistrar, srv StatsServer) {
-	s.RegisterService(&Stats_ServiceDesc, srv)
+func RegisterStatsServiceServer(s grpc.ServiceRegistrar, srv StatsServiceServer) {
+	s.RegisterService(&StatsService_ServiceDesc, srv)
 }
 
-func _Stats_GetBatteries_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _StatsService_GetStats_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(emptypb.Empty)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(StatsServer).GetBatteries(m, &statsGetBatteriesServer{stream})
+	return srv.(StatsServiceServer).GetStats(m, &statsServiceGetStatsServer{stream})
 }
 
-type Stats_GetBatteriesServer interface {
-	Send(*BatteriesResponse) error
+type StatsService_GetStatsServer interface {
+	Send(*StatsResponse) error
 	grpc.ServerStream
 }
 
-type statsGetBatteriesServer struct {
+type statsServiceGetStatsServer struct {
 	grpc.ServerStream
 }
 
-func (x *statsGetBatteriesServer) Send(m *BatteriesResponse) error {
+func (x *statsServiceGetStatsServer) Send(m *StatsResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _Stats_GetCpus_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(emptypb.Empty)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(StatsServer).GetCpus(m, &statsGetCpusServer{stream})
-}
-
-type Stats_GetCpusServer interface {
-	Send(*CpusResponse) error
-	grpc.ServerStream
-}
-
-type statsGetCpusServer struct {
-	grpc.ServerStream
-}
-
-func (x *statsGetCpusServer) Send(m *CpusResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-// Stats_ServiceDesc is the grpc.ServiceDesc for Stats service.
+// StatsService_ServiceDesc is the grpc.ServiceDesc for StatsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Stats_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "Stats",
-	HandlerType: (*StatsServer)(nil),
+var StatsService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "StatsService",
+	HandlerType: (*StatsServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "GetBatteries",
-			Handler:       _Stats_GetBatteries_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "GetCpus",
-			Handler:       _Stats_GetCpus_Handler,
+			StreamName:    "GetStats",
+			Handler:       _StatsService_GetStats_Handler,
 			ServerStreams: true,
 		},
 	},
