@@ -23,7 +23,7 @@ var runCmd = &cobra.Command{
 		done := make(chan struct{})
 
 		go func() {
-			for stats := range c.Recieve() {
+			for stats := range c.Receive() {
 				fmt.Println(stats)
 			}
 			done <- struct{}{}
