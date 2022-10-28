@@ -24,22 +24,24 @@ func (s *statsServer) GetStats(in *emptypb.Empty, srv pb.StatsService_GetStatsSe
 	defer close(cancel)
 
 	wg.Add(2)
-	recieve := func() {
+	recieve := func(cancel <-chan struct{}) {
 		defer close(batts)
 		defer close(cpus)
 
 		defer wg.Done()
 
 		for {
-			select {
-			case batts <- <-GetBatteries(cancel):
-			case cpus <- <-GetCpus(cancel):
+			GetBatteries(cancel, batts)
+			GetCpus(cancel, cpus)
+
+			if _, ok := <-cancel; !ok {
+				return
 			}
 		}
 	}
 
 	ticker := time.NewTicker(time.Second)
-	send := func() {
+	send := func(cancel <-chan struct{}) {
 		defer wg.Done()
 
 		for {
@@ -58,64 +60,62 @@ func (s *statsServer) GetStats(in *emptypb.Empty, srv pb.StatsService_GetStatsSe
 		}
 	}
 
-	go recieve()
-	time.Sleep(time.Second)
-	go send()
+	go recieve(cancel)
+	go send(cancel)
 
 	wg.Wait()
 	return nil
 }
 
-func GetBatteries(cancel <-chan struct{}) <-chan *pb.BatteriesResponse {
+func GetBatteries(cancel <-chan struct{}, out chan<- *pb.BatteriesResponse) {
 	battWidget := *widgets.NewBatteryWidget()
-	out := make(chan *pb.BatteriesResponse)
 
-	for i := 0; i < 5; i++ {
-		go func() {
+	go func() {
 
-			battsResp := &pb.BatteriesResponse{
-				Batteries: make([]*pb.Battery, battWidget.BattsCount()),
+		battsResp := &pb.BatteriesResponse{
+			Batteries: make([]*pb.Battery, battWidget.BattsCount()),
+		}
+		for i := 0; i < battWidget.BattsCount(); i++ {
+			battsResp.Batteries[i] = new(pb.Battery)
+		}
+
+		for batts := range battWidget.GetBatteries(cancel) {
+			for i, v := range batts {
+				battsResp.Batteries[i].BatteryLoad = v.BatteryLoad
+				battsResp.Batteries[i].State = v.State
 			}
-			for i := 0; i < battWidget.BattsCount(); i++ {
-				battsResp.Batteries[i] = new(pb.Battery)
-			}
 
-			for batts := range battWidget.GetBatteries(cancel) {
-				for i, v := range batts {
-					battsResp.Batteries[i].BatteryLoad = v.BatteryLoad
-					battsResp.Batteries[i].State = v.State
-				}
-				out <- battsResp
-			}
-		}()
-	}
+			out <- battsResp
+		}
 
-	return out
+		if _, ok := <-cancel; !ok {
+			return
+		}
+	}()
 }
 
-func GetCpus(cancel <-chan struct{}) <-chan *pb.CpusResponse {
+func GetCpus(cancel <-chan struct{}, out chan<- *pb.CpusResponse) {
 	cpuWidget := *widgets.NewCpuWidget()
-	out := make(chan *pb.CpusResponse)
 
-	for i := 0; i < 5; i++ {
-		go func() {
-			cpusResp := &pb.CpusResponse{
-				Cpus: make([]*pb.Cpu, cpuWidget.CpusCount()),
+	go func() {
+		cpusResp := &pb.CpusResponse{
+			Cpus: make([]*pb.Cpu, cpuWidget.CpusCount()),
+		}
+		for i := 0; i < cpuWidget.CpusCount(); i++ {
+			cpusResp.Cpus[i] = new(pb.Cpu)
+		}
+
+		for cpus := range cpuWidget.GetCpus(cancel) {
+			for i, v := range cpus {
+				cpusResp.Cpus[i].CpuLoad = v.CpuLoad
 			}
-			for i := 0; i < cpuWidget.CpusCount(); i++ {
-				cpusResp.Cpus[i] = new(pb.Cpu)
-			}
+			cpusResp.AverageLoad = <-cpuWidget.GetAverageLoad(cancel)
 
-			for cpus := range cpuWidget.GetCpus(cancel) {
-				for i, v := range cpus {
-					cpusResp.Cpus[i].CpuLoad = v.CpuLoad
-				}
-				cpusResp.AverageLoad = <-cpuWidget.GetAverageLoad(cancel)
+			out <- cpusResp
+		}
 
-				out <- cpusResp
-			}
-		}()
-	}
-
-	return out
+		if _, ok := <-cancel; !ok {
+			return
+		}
+	}()
 }

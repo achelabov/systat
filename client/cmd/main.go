@@ -1,18 +1,10 @@
 package main
 
 import (
-	"os"
-
-	"github.com/achelabov/systat/client"
-	cfg "github.com/achelabov/systat/client/config"
+	"github.com/achelabov/systat/client/app/cli/cmd"
 )
 
 func main() {
-	cfg.Init()
 
-	c := client.NewClient()
-	c.Dial(os.Getenv("HOST") + ":" + os.Getenv("PORT"))
-	c.Start()
-	c.Recieve()
-	c.Close()
+	cmd.Execute()
 }
