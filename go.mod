@@ -7,6 +7,7 @@ require github.com/distatus/battery v0.10.0
 require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect

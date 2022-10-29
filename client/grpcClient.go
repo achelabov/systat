@@ -38,7 +38,7 @@ func (c *grpcClient) Close() {
 	c.conn.Close()
 }
 
-func (c *grpcClient) Recieve() <-chan *pb.StatsResponse {
+func (c *grpcClient) Receive() <-chan *pb.StatsResponse {
 	out := make(chan *pb.StatsResponse)
 	stream, err := c.client.GetStats(context.Background(), new(emptypb.Empty))
 	if err != nil {
