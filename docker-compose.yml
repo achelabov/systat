@@ -1,0 +1,25 @@
+version: '3.9'
+services:
+  client:
+    build: ./client/docker/.
+    volumes:
+      - ./client/:/app/
+    environment:
+      - HOST=localhost
+      - PORT=50005
+    command: ./docker/start.sh
+    depends_on:
+      - server
+    container_name: client
+  
+  server:
+    build: ./server/docker/.
+    volumes:
+      - ./server/:/app/
+    ports:
+      - 50005:50005
+    environment:
+      - HOST=localhost
+      - PORT=50005
+    command: ./docker/start.sh  
+    container_name: server
