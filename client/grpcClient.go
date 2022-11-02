@@ -46,6 +46,8 @@ func (c *grpcClient) Receive() <-chan *pb.StatsResponse {
 	}
 
 	go func() {
+		defer close(out)
+
 		for {
 			resp, err := stream.Recv()
 			if err == io.EOF {

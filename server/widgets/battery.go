@@ -1,7 +1,6 @@
 package widgets
 
 import (
-	"log"
 	"math"
 	"sync"
 	"time"
@@ -95,10 +94,7 @@ func (b *BatteryWidget) update() {
 }
 
 func getBatteries() []*battery.Battery {
-	batteries, err := battery.GetAll()
-	if err != nil {
-		log.Fatal(err)
-	}
+	batteries, _ := battery.GetAll()
 
 	return batteries
 }

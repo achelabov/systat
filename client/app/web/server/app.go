@@ -31,7 +31,8 @@ func (a *app) Run(port string) error {
 	}
 
 	go func() {
-		if err := a.httpServer.ListenAndServe(); err != nil {
+		log.Println("Web server running... ", a.httpServer.Addr)
+		if err := a.httpServer.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatalf("Failed to listen and serve: %+v", err)
 		}
 	}()
@@ -45,6 +46,10 @@ func (a *app) Run(port string) error {
 	defer shutdown()
 
 	return a.httpServer.Shutdown(ctx)
+}
+
+func (a *app) Close() {
+	a.httpServer.Close()
 }
 
 func initRouter() *http.ServeMux {

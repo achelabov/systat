@@ -3,7 +3,6 @@ FROM golang:1.19
 WORKDIR /app/
 ENV GO111MODULE=auto
 RUN apt-get update && apt-get -y install libprotobuf-dev protobuf-compiler
-RUN go install -v
 
 # Install grpc
 RUN go get -u -v github.com/golang/protobuf/proto

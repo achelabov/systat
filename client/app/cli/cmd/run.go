@@ -20,16 +20,10 @@ var runCmd = &cobra.Command{
 		c.Dial(os.Getenv("HOST") + ":" + os.Getenv("PORT"))
 		c.Start()
 
-		done := make(chan struct{})
+		for stats := range c.Receive() {
+			fmt.Println(stats)
+		}
 
-		go func() {
-			for stats := range c.Receive() {
-				fmt.Println(stats)
-			}
-			done <- struct{}{}
-		}()
-
-		<-done
 		c.Close()
 	},
 }
